@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE generatorConfiguration
+        PUBLIC "-//mybatis.org//DTD MyBatis Generator Configuration 1.0//EN"
+        "http://mybatis.org/dtd/mybatis-generator-config_1_0.dtd">
+
+<generatorConfiguration>
+
+    <!--&lt;!&ndash;oracle 数据库配置&ndash;&gt;-->
+    <!--<context id="oracle" targetRuntime="MyBatis3">-->
+
+    <!--<plugin type="org.mybatis.generator.plugins.SerializablePlugin"/>-->
+    <!--<plugin type="org.mybatis.generator.plugins.RowBoundsPlugin"></plugin>-->
+
+    <!--&lt;!&ndash;关闭时间注释 &ndash;&gt;-->
+    <!--<commentGenerator>-->
+    <!--<property name="suppressDate" value="true"/>-->
+    <!--</commentGenerator>-->
+
+    <!--<jdbcConnection driverClass="oracle.jdbc.OracleDriver"-->
+    <!--connectionURL="jdbc:oracle:thin:@//10.199.95.32:1521/VVM"-->
+    <!--userId="vvm"-->
+    <!--password="vvm17#2017">-->
+    <!--</jdbcConnection>-->
+
+    <!--<javaTypeResolver>-->
+    <!--<property name="forceBigDecimals" value="false"/>-->
+    <!--</javaTypeResolver>-->
+
+    <!--<javaModelGenerator-->
+    <!--targetPackage="com.iflytek.model.oraclemodel"-->
+    <!--targetProject="src\main\java">-->
+    <!--<property name="enableSubPackages" value="true"/>-->
+    <!--<property name="trimStrings" value="true"/>-->
+    <!--</javaModelGenerator>-->
+
+    <!--<sqlMapGenerator-->
+    <!--targetPackage="mapper"-->
+    <!--targetProject="src\main\resources">-->
+    <!--<property name="enableSubPackages" value="true"/>-->
+    <!--</sqlMapGenerator>-->
+
+    <!--<javaClientGenerator type="XMLMAPPER"-->
+    <!--targetPackage="com.iflytek.mapper"-->
+    <!--targetProject="src\main\java">-->
+    <!--<property name="enableSubPackages" value="true"/>-->
+    <!--</javaClientGenerator>-->
+
+    <!--&lt;!&ndash;验证码规则表&ndash;&gt;-->
+    <!--<table tableName="VVM_VERIFICATIONCODE_RULE" domainObjectName="VerificationCodeRule"></table>-->
+
+    <!--&lt;!&ndash;验证码记录表&ndash;&gt;-->
+    <!--<table tableName="VVM_VERIFICATIONCODE_LOG" domainObjectName="VerificationCodeLog"></table>-->
+
+    <!--</context>-->
+
+    <!--mysql  数据库配置-->
+    <context id="mysql" targetRuntime="MyBatis3">
+
+        <plugin type="org.mybatis.generator.plugins.SerializablePlugin"/>
+        <plugin type="org.mybatis.generator.plugins.RowBoundsPlugin"></plugin>
+
+        <!--关闭时间注释 -->
+        <commentGenerator>
+            <property name="suppressDate" value="true"/>
+        </commentGenerator>
+
+        <jdbcConnection driverClass="com.mysql.jdbc.Driver"
+                        connectionURL="jdbc:mysql://10.1.99.99:3306/cachemanager?useUnicode=true&amp;characterEncoding=utf8"
+                        userId="root"
+                        password="Vvm!@#0610">
+        </jdbcConnection>
+
+        <javaTypeResolver>
+            <property name="forceBigDecimals" value="false"/>
+        </javaTypeResolver>
+
+        <javaModelGenerator
+                targetPackage="com.iflytek.cachemanager.entity"
+                targetProject="src\main\java">
+            <property name="enableSubPackages" value="true"/>
+            <property name="trimStrings" value="true"/>
+        </javaModelGenerator>
+
+        <sqlMapGenerator
+                targetPackage="mapper"
+                targetProject="src\main\resources">
+            <property name="enableSubPackages" value="true"/>
+        </sqlMapGenerator>
+
+        <javaClientGenerator type="XMLMAPPER"
+                             targetPackage="com.iflytek.cachemanager.mapper"
+                             targetProject="src\main\java">
+            <property name="enableSubPackages" value="true"/>
+        </javaClientGenerator>
+
+        <table tableName="dictionary001" domainObjectName="Dictionary001"></table>
+        <table tableName="dictionary002" domainObjectName="Dictionary002"></table>
+        <table tableName="dictionary003" domainObjectName="Dictionary003"></table>
+        <table tableName="dictionary004" domainObjectName="Dictionary004"></table>
+        <table tableName="dictionary005" domainObjectName="Dictionary005"></table>
+        <table tableName="dictionary006" domainObjectName="Dictionary006"></table>
+
+    </context>
+
+
+</generatorConfiguration>
