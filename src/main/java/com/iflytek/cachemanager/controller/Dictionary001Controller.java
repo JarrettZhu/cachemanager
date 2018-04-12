@@ -3,14 +3,18 @@ package com.iflytek.cachemanager.controller;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.iflytek.cachemanager.entity.Dictionary001;
+import com.iflytek.cachemanager.entity.Dictionary006;
 import com.iflytek.cachemanager.mapper.Dictionary001Mapper;
 import com.iflytek.cachemanager.result.Result;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * @author: tishen
@@ -31,10 +35,41 @@ public class Dictionary001Controller {
      * @Date:下午8:19 2018/4/10
      */
     @RequestMapping(value = "viewclustername", method = RequestMethod.POST)
-    public Result basicOperation() throws IOException {
+    public Result viewclustername(
+            @RequestParam(defaultValue = "query") String method,
+            @RequestParam(required = false) String name,
+            @RequestParam(required = false) String ip,
+            @RequestParam(required = false) String port,
+            @RequestParam(required = false) String zkip,
+            @RequestParam(required = false) String rw,
+            @RequestParam(required = false) String proxyip,
+            @RequestParam(required = false) String targetip,
+            @RequestParam(required = false) String jvmpath,
+            @RequestParam(required = false) String totalnumberconnections,
+            @RequestParam(required = false) String totalfail,
+            @RequestParam(required = false) String javamemory
+    ) throws IOException {
         Dictionary001 dictionary001 = dictionary001Mapper.selectByPrimaryKey(1);
-        JsonNode jsonNode = mapper.readTree(dictionary001.getContent());
-        return Result.newSuccess(jsonNode);
+        Map map = mapper.readValue(dictionary001.getContent(), Map.class);
+        if ("query".equals(method)) {
+            return Result.newSuccess(map);
+        } else if ("update".equals(method)) {
+            map.put("name", name);
+            map.put("ip", ip);
+            map.put("port", port);
+            map.put("zkip", zkip);
+            map.put("rw", rw);
+            map.put("proxyip", proxyip);
+            map.put("targetip", targetip);
+            map.put("jvmpath", jvmpath);
+            map.put("totalnumberconnections", totalnumberconnections);
+            map.put("totalfail", totalfail);
+            map.put("javamemory", javamemory);
+            dictionary001.setContent(mapper.writeValueAsString(map));
+            dictionary001Mapper.updateByPrimaryKey(dictionary001);
+            return Result.newSuccess(map);
+        }
+        return Result.newFailure("method no found", null);
     }
 
     /**
@@ -115,10 +150,34 @@ public class Dictionary001Controller {
      * @Date:下午8:19 2018/4/10
      */
     @RequestMapping(value = "viewdashboardinformation", method = RequestMethod.POST)
-    public Result viewdashboardinformation() throws IOException {
-        Dictionary001 dictionary001 = dictionary001Mapper.selectByPrimaryKey(8);
-        JsonNode jsonNode = mapper.readTree(dictionary001.getContent());
-        return Result.newSuccess(jsonNode);
+    public Result viewdashboardinformation(
+            @RequestParam(defaultValue = "query")String method,
+            @RequestParam(required = false)String daship,
+            @RequestParam(required = false)String ver,
+            @RequestParam(required = false)String dashport,
+            @RequestParam(required = false)String jvmpath,
+            @RequestParam(required = false)String cppath
+            ) throws IOException {
+        Dictionary001 dictionary001dash = dictionary001Mapper.selectByPrimaryKey(8);
+        Dictionary001 dictionary001cluster = dictionary001Mapper.selectByPrimaryKey(1);
+        Map mapdash = mapper.readValue(dictionary001dash.getContent(), Map.class);
+        Map mapcluster = mapper.readValue(dictionary001cluster.getContent(), Map.class);
+        Map mapmerge = new HashMap();
+        mapmerge.putAll(mapdash);
+        mapmerge.putAll(mapcluster);
+        if ("query".equals(method)){
+            return Result.newSuccess(mapmerge);
+        }else if ("update".equals(method)){
+            mapdash.put("daship",daship);
+            mapdash.put("ver",ver);
+            mapdash.put("dashport",dashport);
+            mapdash.put("jvmpath",jvmpath);
+            mapdash.put("cppath",cppath);
+            dictionary001dash.setContent(mapper.writeValueAsString(mapdash));
+            dictionary001Mapper.updateByPrimaryKey(dictionary001dash);
+            return Result.newSuccess(mapdash);
+        }
+        return Result.newFailure("method no found", null);
     }
 
     /**
