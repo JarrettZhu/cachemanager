@@ -2,8 +2,7 @@ package com.iflytek.cachemanager.controller;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.iflytek.cachemanager.entity.Dictionary001;
-import com.iflytek.cachemanager.entity.Dictionary006;
+import com.iflytek.cachemanager.entity.*;
 import com.iflytek.cachemanager.mapper.Dictionary001Mapper;
 import com.iflytek.cachemanager.result.Result;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,6 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -31,7 +31,7 @@ public class Dictionary001Controller {
 
     /**
      * @Author:ZhuJunHua
-     * @Description:01 查看集群名称
+     * @Description:01 获取集群信息
      * @Date:下午8:19 2018/4/10
      */
     @RequestMapping(value = "viewclustername", method = RequestMethod.POST)
@@ -47,8 +47,12 @@ public class Dictionary001Controller {
             @RequestParam(required = false) String jvmpath,
             @RequestParam(required = false) String totalnumberconnections,
             @RequestParam(required = false) String totalfail,
-            @RequestParam(required = false) String javamemory
-    ) throws IOException {
+            @RequestParam(required = false) String javamemory,
+            @RequestParam(required = false) String daship,
+            @RequestParam(required = false) String ver,
+            @RequestParam(required = false) String dashport,
+            @RequestParam(required = false) String refreshtime
+            ) throws IOException {
         Dictionary001 dictionary001 = dictionary001Mapper.selectByPrimaryKey(1);
         Map map = mapper.readValue(dictionary001.getContent(), Map.class);
         if ("query".equals(method)) {
@@ -65,6 +69,9 @@ public class Dictionary001Controller {
             map.put("totalnumberconnections", totalnumberconnections);
             map.put("totalfail", totalfail);
             map.put("javamemory", javamemory);
+            map.put("daship", daship);
+            map.put("ver", ver);
+            map.put("refreshtime", refreshtime);
             dictionary001.setContent(mapper.writeValueAsString(map));
             dictionary001Mapper.updateByPrimaryKey(dictionary001);
             return Result.newSuccess(map);
@@ -198,10 +205,15 @@ public class Dictionary001Controller {
      * @Date:下午8:19 2018/4/10
      */
     @RequestMapping(value = "setrefreshtime", method = RequestMethod.POST)
-    public Result setrefreshtime() throws IOException {
-        Dictionary001 dictionary001 = dictionary001Mapper.selectByPrimaryKey(10);
-        JsonNode jsonNode = mapper.readTree(dictionary001.getContent());
-        return Result.newSuccess(jsonNode);
+    public Result setrefreshtime(
+            @RequestParam(required = true) int refreshtime
+    ) throws IOException {
+        Dictionary001 dictionary001 = dictionary001Mapper.selectByPrimaryKey(1);
+        Map map = mapper.readValue(dictionary001.getContent(),Map.class);
+        map.put("refreshtime", refreshtime);
+        dictionary001.setContent(mapper.writeValueAsString(map));
+        dictionary001Mapper.updateByPrimaryKey(dictionary001);
+        return Result.newSuccess(null);
     }
 
     /**

@@ -3,14 +3,17 @@ package com.iflytek.cachemanager.controller;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.iflytek.cachemanager.entity.Dictionary004;
+import com.iflytek.cachemanager.entity.Dictionary004Example;
 import com.iflytek.cachemanager.mapper.Dictionary004Mapper;
 import com.iflytek.cachemanager.result.Result;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.io.IOException;
+import java.util.*;
 
 /**
  * Created by zhujunhua on 2018/4/11.
@@ -23,13 +26,21 @@ public class Dictionary004Controller {
     private ObjectMapper mapper = new ObjectMapper();
 
     /**
-     * @Description:01 查看Proxy代理ID
+     * @Description:01 查看信息
      */
     @RequestMapping(value = "viewproxyagentid", method = RequestMethod.POST)
     public Result viewproxyagentid() throws IOException {
-        Dictionary004 dictionary004 = dictionary004Mapper.selectByPrimaryKey(1);
-        JsonNode jsonNode = mapper.readTree(dictionary004.getContent());
-        return Result.newSuccess(jsonNode);
+        Dictionary004Example example1 = new Dictionary004Example();
+        Dictionary004Example.Criteria criteria1 = example1.createCriteria();
+        criteria1.andPidEqualTo(20);
+        List<Dictionary004> list1 = dictionary004Mapper.selectByExample(example1);
+
+        List sonList = new ArrayList();
+        for (Dictionary004 d : list1) {
+            Map map = mapper.readValue(d.getContent(), Map.class);
+            sonList.add(map);
+        }
+        return Result.newSuccess(sonList);
     }
 
     /**
@@ -96,19 +107,48 @@ public class Dictionary004Controller {
      * @Description:08 添加Proxy代理地址
      */
     @RequestMapping(value = "addproxyproxyaddress", method = RequestMethod.POST)
-    public Result addproxyproxyaddress() throws IOException {
-        Dictionary004 dictionary004 = dictionary004Mapper.selectByPrimaryKey(8);
-        JsonNode jsonNode = mapper.readTree(dictionary004.getContent());
-        return Result.newSuccess(jsonNode);
+    public Result addproxyproxyaddress(
+            @RequestParam(required = true)String proxyip,
+            @RequestParam(required = true)String adminip
+    ) throws IOException {
+        Dictionary004 dictionary004 = new Dictionary004();
+        JsonNode jsonNode = mapper.readTree(dictionary004Mapper.selectByPrimaryKey(20).getContent());
+        dictionary004.setPid(20);
+        dictionary004.setLevel(2);
+        dictionary004.setState(1);
+        dictionary004.setDescmsg("集群-代理服务器");
+
+        int random = 0;
+        for(int j = 0; j< 100; j++){
+            random = (int)((Math.random()*9+1)*100000);
+        }
+        Map map = new HashMap();
+        map.put("name", jsonNode.get("name"));
+        map.put("proxyip", proxyip);
+        map.put("zkip", jsonNode.get("zkip"));
+        map.put("adminip", adminip);
+        map.put("proxyid", random);
+        map.put("tokenmsg", UUID.randomUUID().toString().replaceAll("\\-", ""));
+        map.put("jvmpath", "jvm运行环境");
+        map.put("javamemory", "java内存");
+
+        dictionary004.setContent(mapper.writeValueAsString(map));
+        dictionary004Mapper.insertSelective(dictionary004);
+        return Result.newSuccess(null);
     }
 
     /**
      * @Description:09 删除Proxy代理地址
      */
     @RequestMapping(value = "delproxyaddress", method = RequestMethod.POST)
-    public Result delproxyaddress() throws IOException {
-        Dictionary004 dictionary004 = dictionary004Mapper.selectByPrimaryKey(9);
-        JsonNode jsonNode = mapper.readTree(dictionary004.getContent());
-        return Result.newSuccess(jsonNode);
+    public Result delproxyaddress(
+            @RequestParam(required = true)String proxyid
+    ) throws IOException {
+        Dictionary004Example example = new Dictionary004Example();
+        Dictionary004Example.Criteria criteria = example.createCriteria();
+        criteria.andContentLike("%" + proxyid + "%");
+
+        dictionary004Mapper.deleteByExample(example);
+        return Result.newSuccess(null);
     }
 }
