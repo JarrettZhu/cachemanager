@@ -582,7 +582,7 @@ public class Dictionary003Controller {
             map.put("group_id", map.get("group_id"));
             map.put("action", "");
             map.put("id", map.get("id"));
-            map.put("delete", "否");
+//            map.put("delete", "否");
             slotsobject.setContent(mapper.writeValueAsString(map));
             slotsobjectMapper.updateByPrimaryKey(slotsobject);
         }
