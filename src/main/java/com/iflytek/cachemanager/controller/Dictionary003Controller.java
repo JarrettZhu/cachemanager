@@ -9,7 +9,6 @@ import com.iflytek.cachemanager.result.Result;
 import lombok.extern.slf4j.Slf4j;
 import net.sf.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Required;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -582,7 +581,7 @@ public class Dictionary003Controller {
             map.put("group_id", map.get("group_id"));
             map.put("action", "");
             map.put("id", map.get("id"));
-            map.put("delete", "否");
+//            map.put("delete", "否");
             slotsobject.setContent(mapper.writeValueAsString(map));
             slotsobjectMapper.updateByPrimaryKey(slotsobject);
         }
@@ -648,8 +647,21 @@ public class Dictionary003Controller {
     private void disableon() throws IOException {
 
         slotsobjectExample example = new slotsobjectExample();
-        slotsobjectExample.Criteria criteria = example.createCriteria();
-        criteria.andContentLike("%pending%");
+//        slotsobjectExample.Criteria criteria = example.createCriteria();
+        List liststr = new ArrayList();
+//        liststr.add("{\"group_id\":\"%\",\"action\":{\"index\":\"%\",\"target_id\":\"%\",\"state\":\"pending\"},\"id\":%}");
+//        liststr.add("{\"group_id\":\"%\",\"action\":{\"index\":\"%\",\"target_id\":\"%\",\"state\":\"migrating\"},\"id\":%}");
+//        liststr.add("{\"group_id\":\"%\",\"action\":{\"index\":\"%\",\"target_id\":\"%\",\"state\":\"finished\"},\"id\":%}");
+//        liststr.add("%pending%");
+//        liststr.add("%migrating%");
+//        liststr.add("%finished%");
+//        criteria.andContentLike("%pending%");
+//        criteria.andContentLike("%migrating%");
+//        criteria.andContentLike("%finished%");
+//        criteria.andContentIn(liststr);
+        example.or().andContentLike("%pending%");
+        example.or().andContentLike("%migrating%");
+        example.or().andContentLike("%finished%");
         List<slotsobject> list = slotsobjectMapper.selectByExample(example);
         log.info("pending list"+list.size());
         for (slotsobject d : list){
@@ -660,96 +672,627 @@ public class Dictionary003Controller {
             Map map1 = mapper.readValue(d.getContent(), Map.class);
             Map map = new HashMap();
 
+            //todo
             Map map33 = (Map)map1.get("action");
+            if ("pending".equals(map33.get("state"))){
+                //先检查disable开关
+                Dictionary003Example exampledisable = new Dictionary003Example();
+                Dictionary003Example.Criteria criteriadisable = exampledisable.createCriteria();
+                criteriadisable.andDescmsgEqualTo("迁移开关");
+                List<Dictionary003> listdisable = dictionary003Mapper.selectByExample(exampledisable);
 
-            map.put("index",map33.get("index"));
-            map.put("target_id",map33.get("target_id"));
-            map.put("state", "migrating");
+                for (Dictionary003 ddisable : listdisable){
+                    Map mapdisable = mapper.readValue(ddisable.getContent(), Map.class);
+                    log.info("disable为:" + mapdisable.get("disable"));
+                    if ("关".equals(mapdisable.get("disable"))){
+                        return;
+                    }else if ("开".equals(mapdisable.get("disable"))){
+                        //更新为migrating状态
+                        map.put("index",map33.get("index"));
+                        map.put("target_id",map33.get("target_id"));
+                        map.put("state", "migrating");
 
+                        map1.put("action", map);
 
+                        slotsobject.setContent(mapper.writeValueAsString(map1));
 
+                        slotsobjectExample example1 = new slotsobjectExample();
+                        slotsobjectExample.Criteria criteria1 = example1.createCriteria();
+//                        criteria1.andContentLike("%index%");
+                        criteria1.andContentLike("%pending%").andDescmsgEqualTo(d.getDescmsg());
+                        slotsobjectMapper.updateByExampleSelective(slotsobject, example1);
 
+                        //更新为finished状态
+                        slotsobject slotsobject1 = new slotsobject();
 
-            log.info("!!@#@#$@$@$@#@taget_id:"+ map33.get("target_id"));
+                        Map map2 = new HashMap();
+                        Map map3 = mapper.readValue(d.getContent(), Map.class);
 
-            map1.put("action", map);
+                        //todo
+//                        Map map44 = (Map)map1.get("action");
 
-            slotsobject.setContent(mapper.writeValueAsString(map1));
+                        map2.put("index",map33.get("index"));
+                        map2.put("target_id",map33.get("target_id"));
+                        map2.put("state", "finished");
 
-            slotsobjectExample example1 = new slotsobjectExample();
-            slotsobjectExample.Criteria criteria1 = example1.createCriteria();
-            criteria1.andContentLike("%index%");
-            slotsobjectMapper.updateByExampleSelective(slotsobject, example1);
+                        map3.put("action", map2);
 
+                        slotsobject1.setContent(mapper.writeValueAsString(map3));
 
+                        slotsobjectExample example2 = new slotsobjectExample();
+                        slotsobjectExample.Criteria criteria2 = example2.createCriteria();
+                        criteria2.andContentLike("%migrating%").andDescmsgEqualTo(d.getDescmsg());
+                        slotsobjectMapper.updateByExampleSelective(slotsobject1, example2);
 
+                        //查出目标组的groupid和其对应的slot组pid，用于更新slot信息
+                        Dictionary003Example example10 = new Dictionary003Example();
+                        Dictionary003Example.Criteria criteria10 = example10.createCriteria();
+                        criteria10.andContentLike("%" + map33.get("target_id") + "%");
+                        int pid = 0;//服务组表id
+                        String groupid = "";
+                        List<Dictionary003> list1 = dictionary003Mapper.selectByExample(example10);
+                        for (Dictionary003 dd : list1) {
+                            pid = dd.getPid();
 
+                            JSONObject jsonObject = JSONObject.fromObject(dd.getContent());
+                            groupid = jsonObject.getString("servergroupid");
+                        }
+                        log.info("pid = " + pid);
+                        log.info("servergroupid = " + groupid);
 
+                        //迁移完毕，更新为目标组的pid，greoup_id，移除action对象
+                        slotsobjectExample example3 = new slotsobjectExample();
+                        slotsobjectExample.Criteria criteria3 = example3.createCriteria();
+                        criteria3.andContentLike("%finished%").andDescmsgEqualTo(d.getDescmsg());
+                        List<slotsobject> list3 = slotsobjectMapper.selectByExample(example3);
+                        for (slotsobject ddd : list3) {
+                            slotsobject slotsobject11 = new slotsobject();
+                            slotsobject11.setId(ddd.getId());
+                            slotsobject11.setPid(pid);
+                            slotsobject11.setLevel(3);
+                            slotsobject11.setState(1);
+                            slotsobject11.setDescmsg(ddd.getDescmsg());
 
-
-            slotsobject slotsobject1 = new slotsobject();
-
-            Map map2 = new HashMap();
-            Map map3 = mapper.readValue(d.getContent(), Map.class);
-
-            map2.put("index",map1.get("index"));
-            map2.put("target_id",map33.get("target_id"));
-            map2.put("state", "finished");
-
-            map3.put("action", map2);
-
-            slotsobject1.setContent(mapper.writeValueAsString(map3));
-
-            slotsobjectExample example2 = new slotsobjectExample();
-            slotsobjectExample.Criteria criteria2 = example2.createCriteria();
-            criteria2.andContentLike("%index%");
-            slotsobjectMapper.updateByExampleSelective(slotsobject1, example2);
-
-
-
-
-            log.info("!!!!!!target_id = "+ map2.get("target_id"));
-            Dictionary003Example example10 = new Dictionary003Example();
-            Dictionary003Example.Criteria criteria10 = example10.createCriteria();
-            criteria10.andContentLike("%" + map33.get("target_id") + "%");
-            int pid = 0;//服务组表id
-            String groupid = "";
-            List<Dictionary003> list1 = dictionary003Mapper.selectByExample(example10);
-            for (Dictionary003 dd : list1) {
-                pid = dd.getPid();
-
-                JSONObject jsonObject = JSONObject.fromObject(dd.getContent());
-                groupid = jsonObject.getString("servergroupid");
+                            Map map003 = mapper.readValue(ddd.getContent(), Map.class);
+                            map003.put("group_id", groupid);
+                            map003.put("action", "");
+                            map003.put("id", ddd.getDescmsg());
+                            slotsobject11.setContent(mapper.writeValueAsString(map003));
+                            slotsobjectMapper.updateByPrimaryKey(slotsobject11);
+                        }
+//                        return;
+                    }
+                }
             }
-            log.info("pid = " + pid);
-            log.info("servergroupid = " + groupid);
 
+            if ("migrating".equals(map33.get("state"))){
+                //先检查disable开关
+                Dictionary003Example exampledisable = new Dictionary003Example();
+                Dictionary003Example.Criteria criteriadisable = exampledisable.createCriteria();
+                criteriadisable.andDescmsgEqualTo("迁移开关");
+                List<Dictionary003> listdisable = dictionary003Mapper.selectByExample(exampledisable);
 
+                for (Dictionary003 ddisable : listdisable){
+                    Map mapdisable = mapper.readValue(ddisable.getContent(), Map.class);
+                    log.info("disable为:" + mapdisable.get("disable"));
+                    if ("关".equals(mapdisable.get("disable"))){
+                        return;
+                    }else if ("开".equals(mapdisable.get("disable"))){
+                        //更新为finished状态
+                        slotsobject slotsobject1 = new slotsobject();
 
+                        Map map2 = new HashMap();
+                        Map map3 = mapper.readValue(d.getContent(), Map.class);
 
+                        //todo
+//                        Map map44 = (Map)map1.get("action");
 
-            //迁移完毕，更新为目标组的pid，greoup_id，移除action对象
-            slotsobjectExample example3 = new slotsobjectExample();
-            slotsobjectExample.Criteria criteria3 = example3.createCriteria();
-            criteria3.andContentLike("%index%");
-            List<slotsobject> list3 = slotsobjectMapper.selectByExample(example3);
-            for (slotsobject ddd : list3) {
-                slotsobject slotsobject11 = new slotsobject();
-                slotsobject11.setId(ddd.getId());
-                slotsobject11.setPid(pid);
-                slotsobject11.setLevel(3);
-                slotsobject11.setState(1);
-                slotsobject11.setDescmsg(ddd.getDescmsg());
+                        map2.put("index",map33.get("index"));
+                        map2.put("target_id",map33.get("target_id"));
+                        map2.put("state", "finished");
 
-                Map map003 = mapper.readValue(ddd.getContent(), Map.class);
-                map003.put("group_id", groupid);
-                map003.put("action", "");
-                map003.put("id", ddd.getDescmsg());
-                slotsobject11.setContent(mapper.writeValueAsString(map003));
-                slotsobjectMapper.updateByPrimaryKey(slotsobject11);
+                        map3.put("action", map2);
+
+                        slotsobject1.setContent(mapper.writeValueAsString(map3));
+
+                        slotsobjectExample example2 = new slotsobjectExample();
+                        slotsobjectExample.Criteria criteria2 = example2.createCriteria();
+                        criteria2.andContentLike("%migrating%").andDescmsgEqualTo(d.getDescmsg());
+                        slotsobjectMapper.updateByExampleSelective(slotsobject1, example2);
+
+                        //查出目标组的groupid和其对应的slot组pid，用于更新slot信息
+                        Dictionary003Example example10 = new Dictionary003Example();
+                        Dictionary003Example.Criteria criteria10 = example10.createCriteria();
+                        criteria10.andContentLike("%" + map33.get("target_id") + "%");
+                        int pid = 0;//服务组表id
+                        String groupid = "";
+                        List<Dictionary003> list1 = dictionary003Mapper.selectByExample(example10);
+                        for (Dictionary003 dd : list1) {
+                            pid = dd.getPid();
+
+                            JSONObject jsonObject = JSONObject.fromObject(dd.getContent());
+                            groupid = jsonObject.getString("servergroupid");
+                        }
+                        log.info("pid = " + pid);
+                        log.info("servergroupid = " + groupid);
+
+                        //迁移完毕，更新为目标组的pid，greoup_id，移除action对象
+                        slotsobjectExample example3 = new slotsobjectExample();
+                        slotsobjectExample.Criteria criteria3 = example3.createCriteria();
+                        criteria3.andContentLike("%finished%").andDescmsgEqualTo(d.getDescmsg());
+                        List<slotsobject> list3 = slotsobjectMapper.selectByExample(example3);
+                        for (slotsobject ddd : list3) {
+                            slotsobject slotsobject11 = new slotsobject();
+                            slotsobject11.setId(ddd.getId());
+                            slotsobject11.setPid(pid);
+                            slotsobject11.setLevel(3);
+                            slotsobject11.setState(1);
+                            slotsobject11.setDescmsg(ddd.getDescmsg());
+
+                            Map map003 = mapper.readValue(ddd.getContent(), Map.class);
+                            map003.put("group_id", groupid);
+                            map003.put("action", "");
+                            map003.put("id", ddd.getDescmsg());
+                            slotsobject11.setContent(mapper.writeValueAsString(map003));
+                            slotsobjectMapper.updateByPrimaryKey(slotsobject11);
+                        }
+//                        return;
+                    }
+                }
             }
+
+            if ("finished".equals(map33.get("state"))){
+                //先检查disable开关
+                Dictionary003Example exampledisable = new Dictionary003Example();
+                Dictionary003Example.Criteria criteriadisable = exampledisable.createCriteria();
+                criteriadisable.andDescmsgEqualTo("迁移开关");
+                List<Dictionary003> listdisable = dictionary003Mapper.selectByExample(exampledisable);
+
+                for (Dictionary003 ddisable : listdisable){
+                    Map mapdisable = mapper.readValue(ddisable.getContent(), Map.class);
+                    log.info("disable为:" + mapdisable.get("disable"));
+                    if ("关".equals(mapdisable.get("disable"))){
+                        return;
+                    }else if ("开".equals(mapdisable.get("disable"))){
+                        //查出目标组的groupid和其对应的slot组pid，用于更新slot信息
+                        Dictionary003Example example10 = new Dictionary003Example();
+                        Dictionary003Example.Criteria criteria10 = example10.createCriteria();
+                        criteria10.andContentLike("%" + map33.get("target_id") + "%");
+                        int pid = 0;//服务组表id
+                        String groupid = "";
+                        List<Dictionary003> list1 = dictionary003Mapper.selectByExample(example10);
+                        for (Dictionary003 dd : list1) {
+                            pid = dd.getPid();
+
+                            JSONObject jsonObject = JSONObject.fromObject(dd.getContent());
+                            groupid = jsonObject.getString("servergroupid");
+                        }
+                        log.info("pid = " + pid);
+                        log.info("servergroupid = " + groupid);
+
+                        //迁移完毕，更新为目标组的pid，greoup_id，移除action对象
+                        slotsobjectExample example3 = new slotsobjectExample();
+                        slotsobjectExample.Criteria criteria3 = example3.createCriteria();
+                        criteria3.andContentLike("%finished%").andDescmsgEqualTo(d.getDescmsg());
+                        List<slotsobject> list3 = slotsobjectMapper.selectByExample(example3);
+                        for (slotsobject ddd : list3) {
+                            slotsobject slotsobject11 = new slotsobject();
+                            slotsobject11.setId(ddd.getId());
+                            slotsobject11.setPid(pid);
+                            slotsobject11.setLevel(3);
+                            slotsobject11.setState(1);
+                            slotsobject11.setDescmsg(ddd.getDescmsg());
+
+                            Map map003 = mapper.readValue(ddd.getContent(), Map.class);
+                            map003.put("group_id", groupid);
+                            map003.put("action", "");
+                            map003.put("id", ddd.getDescmsg());
+                            slotsobject11.setContent(mapper.writeValueAsString(map003));
+                            slotsobjectMapper.updateByPrimaryKey(slotsobject11);
+                        }
+//                        return;
+                    }
+                }
+            }
+
+//            //更新为migrating状态
+//            map.put("index",map33.get("index"));
+//            map.put("target_id",map33.get("target_id"));
+//            map.put("state", "migrating");
+//
+//            map1.put("action", map);
+//
+//            slotsobject.setContent(mapper.writeValueAsString(map1));
+//
+//            slotsobjectExample example1 = new slotsobjectExample();
+//            slotsobjectExample.Criteria criteria1 = example1.createCriteria();
+//            criteria1.andContentLike("%index%");
+//            slotsobjectMapper.updateByExampleSelective(slotsobject, example1);
+//
+//            //更新为finished状态
+//            slotsobject slotsobject1 = new slotsobject();
+//
+//            Map map2 = new HashMap();
+//            Map map3 = mapper.readValue(d.getContent(), Map.class);
+//
+//            //todo
+//            Map map44 = (Map)map1.get("action");
+//
+//            map2.put("index",map1.get("index"));
+//            map2.put("target_id",map33.get("target_id"));
+//            map2.put("state", "finished");
+//
+//            map3.put("action", map2);
+//
+//            slotsobject1.setContent(mapper.writeValueAsString(map3));
+//
+//            slotsobjectExample example2 = new slotsobjectExample();
+//            slotsobjectExample.Criteria criteria2 = example2.createCriteria();
+//            criteria2.andContentLike("%index%");
+//            slotsobjectMapper.updateByExampleSelective(slotsobject1, example2);
+//
+//            //查出目标组的groupid和其对应的slot组pid，用于更新slot信息
+//            Dictionary003Example example10 = new Dictionary003Example();
+//            Dictionary003Example.Criteria criteria10 = example10.createCriteria();
+//            criteria10.andContentLike("%" + map33.get("target_id") + "%");
+//            int pid = 0;//服务组表id
+//            String groupid = "";
+//            List<Dictionary003> list1 = dictionary003Mapper.selectByExample(example10);
+//            for (Dictionary003 dd : list1) {
+//                pid = dd.getPid();
+//
+//                JSONObject jsonObject = JSONObject.fromObject(dd.getContent());
+//                groupid = jsonObject.getString("servergroupid");
+//            }
+//            log.info("pid = " + pid);
+//            log.info("servergroupid = " + groupid);
+//
+//            //迁移完毕，更新为目标组的pid，greoup_id，移除action对象
+//            slotsobjectExample example3 = new slotsobjectExample();
+//            slotsobjectExample.Criteria criteria3 = example3.createCriteria();
+//            criteria3.andContentLike("%index%");
+//            List<slotsobject> list3 = slotsobjectMapper.selectByExample(example3);
+//            for (slotsobject ddd : list3) {
+//                slotsobject slotsobject11 = new slotsobject();
+//                slotsobject11.setId(ddd.getId());
+//                slotsobject11.setPid(pid);
+//                slotsobject11.setLevel(3);
+//                slotsobject11.setState(1);
+//                slotsobject11.setDescmsg(ddd.getDescmsg());
+//
+//                Map map003 = mapper.readValue(ddd.getContent(), Map.class);
+//                map003.put("group_id", groupid);
+//                map003.put("action", "");
+//                map003.put("id", ddd.getDescmsg());
+//                slotsobject11.setContent(mapper.writeValueAsString(map003));
+//                slotsobjectMapper.updateByPrimaryKey(slotsobject11);
+//            }
         }
+        return;
+    }
 
+
+    /**
+     * @Description:开启开关时去扫出pending状态的
+     */
+    private void normalmigrating() throws IOException {
+
+        slotsobjectExample example = new slotsobjectExample();
+        slotsobjectExample.Criteria criteria = example.createCriteria();
+        List liststr = new ArrayList();
+//        liststr.add("{\"group_id\":\"%\",\"action\":{\"index\":\"%\",\"target_id\":\"%\",\"state\":\"pending\"},\"id\":%}");
+//        liststr.add("{\"group_id\":\"%\",\"action\":{\"index\":\"%\",\"target_id\":\"%\",\"state\":\"migrating\"},\"id\":%}");
+//        liststr.add("{\"group_id\":\"%\",\"action\":{\"index\":\"%\",\"target_id\":\"%\",\"state\":\"finished\"},\"id\":%}");
+//        liststr.add("%pending%");
+//        liststr.add("%migrating%");
+//        liststr.add("%finished%");
+        criteria.andContentLike("%pending%").andContentLike("%migrating%").andContentLike("%finished%");
+//        criteria.andContentIn(liststr);
+        List<slotsobject> list = slotsobjectMapper.selectByExample(example);
+        log.info("pending list"+list.size());
+        for (slotsobject d : list){
+
+            slotsobject slotsobject = new slotsobject();
+
+
+            Map map1 = mapper.readValue(d.getContent(), Map.class);
+            Map map = new HashMap();
+
+            //todo
+            Map map33 = (Map)map1.get("action");
+            if ("pending".equals(map33.get("state"))){
+                //先检查disable开关
+                Dictionary003Example exampledisable = new Dictionary003Example();
+                Dictionary003Example.Criteria criteriadisable = exampledisable.createCriteria();
+                criteriadisable.andDescmsgEqualTo("迁移开关");
+                List<Dictionary003> listdisable = dictionary003Mapper.selectByExample(exampledisable);
+
+                for (Dictionary003 ddisable : listdisable){
+                    Map mapdisable = mapper.readValue(ddisable.getContent(), Map.class);
+                    log.info("disable为:" + mapdisable.get("disable"));
+                    if ("关".equals(mapdisable.get("disable"))){
+                        return;
+                    }else if ("开".equals(map.get("disable"))){
+                        //更新为migrating状态
+                        map.put("index",map33.get("index"));
+                        map.put("target_id",map33.get("target_id"));
+                        map.put("state", "migrating");
+
+                        map1.put("action", map);
+
+                        slotsobject.setContent(mapper.writeValueAsString(map1));
+
+                        slotsobjectExample example1 = new slotsobjectExample();
+                        slotsobjectExample.Criteria criteria1 = example1.createCriteria();
+                        criteria1.andContentLike("%index%");
+                        slotsobjectMapper.updateByExampleSelective(slotsobject, example1);
+
+                        //更新为finished状态
+                        slotsobject slotsobject1 = new slotsobject();
+
+                        Map map2 = new HashMap();
+                        Map map3 = mapper.readValue(d.getContent(), Map.class);
+
+                        //todo
+                        Map map44 = (Map)map1.get("action");
+
+                        map2.put("index",map1.get("index"));
+                        map2.put("target_id",map33.get("target_id"));
+                        map2.put("state", "finished");
+
+                        map3.put("action", map2);
+
+                        slotsobject1.setContent(mapper.writeValueAsString(map3));
+
+                        slotsobjectExample example2 = new slotsobjectExample();
+                        slotsobjectExample.Criteria criteria2 = example2.createCriteria();
+                        criteria2.andContentLike("%index%");
+                        slotsobjectMapper.updateByExampleSelective(slotsobject1, example2);
+
+                        //查出目标组的groupid和其对应的slot组pid，用于更新slot信息
+                        Dictionary003Example example10 = new Dictionary003Example();
+                        Dictionary003Example.Criteria criteria10 = example10.createCriteria();
+                        criteria10.andContentLike("%" + map33.get("target_id") + "%");
+                        int pid = 0;//服务组表id
+                        String groupid = "";
+                        List<Dictionary003> list1 = dictionary003Mapper.selectByExample(example10);
+                        for (Dictionary003 dd : list1) {
+                            pid = dd.getPid();
+
+                            JSONObject jsonObject = JSONObject.fromObject(dd.getContent());
+                            groupid = jsonObject.getString("servergroupid");
+                        }
+                        log.info("pid = " + pid);
+                        log.info("servergroupid = " + groupid);
+
+                        //迁移完毕，更新为目标组的pid，greoup_id，移除action对象
+                        slotsobjectExample example3 = new slotsobjectExample();
+                        slotsobjectExample.Criteria criteria3 = example3.createCriteria();
+                        criteria3.andContentLike("%index%");
+                        List<slotsobject> list3 = slotsobjectMapper.selectByExample(example3);
+                        for (slotsobject ddd : list3) {
+                            slotsobject slotsobject11 = new slotsobject();
+                            slotsobject11.setId(ddd.getId());
+                            slotsobject11.setPid(pid);
+                            slotsobject11.setLevel(3);
+                            slotsobject11.setState(1);
+                            slotsobject11.setDescmsg(ddd.getDescmsg());
+
+                            Map map003 = mapper.readValue(ddd.getContent(), Map.class);
+                            map003.put("group_id", groupid);
+                            map003.put("action", "");
+                            map003.put("id", ddd.getDescmsg());
+                            slotsobject11.setContent(mapper.writeValueAsString(map003));
+                            slotsobjectMapper.updateByPrimaryKey(slotsobject11);
+                        }
+                        return;
+                    }
+                }
+            }
+
+            if ("migrating".equals(map33.get("state"))){
+                //先检查disable开关
+                Dictionary003Example exampledisable = new Dictionary003Example();
+                Dictionary003Example.Criteria criteriadisable = exampledisable.createCriteria();
+                criteriadisable.andDescmsgEqualTo("迁移开关");
+                List<Dictionary003> listdisable = dictionary003Mapper.selectByExample(exampledisable);
+
+                for (Dictionary003 ddisable : listdisable){
+                    Map mapdisable = mapper.readValue(ddisable.getContent(), Map.class);
+                    log.info("disable为:" + mapdisable.get("disable"));
+                    if ("关".equals(mapdisable.get("disable"))){
+                        return;
+                    }else if ("开".equals(map.get("disable"))){
+                        //更新为finished状态
+                        slotsobject slotsobject1 = new slotsobject();
+
+                        Map map2 = new HashMap();
+                        Map map3 = mapper.readValue(d.getContent(), Map.class);
+
+                        //todo
+                        Map map44 = (Map)map1.get("action");
+
+                        map2.put("index",map1.get("index"));
+                        map2.put("target_id",map33.get("target_id"));
+                        map2.put("state", "finished");
+
+                        map3.put("action", map2);
+
+                        slotsobject1.setContent(mapper.writeValueAsString(map3));
+
+                        slotsobjectExample example2 = new slotsobjectExample();
+                        slotsobjectExample.Criteria criteria2 = example2.createCriteria();
+                        criteria2.andContentLike("%index%");
+                        slotsobjectMapper.updateByExampleSelective(slotsobject1, example2);
+
+                        //查出目标组的groupid和其对应的slot组pid，用于更新slot信息
+                        Dictionary003Example example10 = new Dictionary003Example();
+                        Dictionary003Example.Criteria criteria10 = example10.createCriteria();
+                        criteria10.andContentLike("%" + map33.get("target_id") + "%");
+                        int pid = 0;//服务组表id
+                        String groupid = "";
+                        List<Dictionary003> list1 = dictionary003Mapper.selectByExample(example10);
+                        for (Dictionary003 dd : list1) {
+                            pid = dd.getPid();
+
+                            JSONObject jsonObject = JSONObject.fromObject(dd.getContent());
+                            groupid = jsonObject.getString("servergroupid");
+                        }
+                        log.info("pid = " + pid);
+                        log.info("servergroupid = " + groupid);
+
+                        //迁移完毕，更新为目标组的pid，greoup_id，移除action对象
+                        slotsobjectExample example3 = new slotsobjectExample();
+                        slotsobjectExample.Criteria criteria3 = example3.createCriteria();
+                        criteria3.andContentLike("%index%");
+                        List<slotsobject> list3 = slotsobjectMapper.selectByExample(example3);
+                        for (slotsobject ddd : list3) {
+                            slotsobject slotsobject11 = new slotsobject();
+                            slotsobject11.setId(ddd.getId());
+                            slotsobject11.setPid(pid);
+                            slotsobject11.setLevel(3);
+                            slotsobject11.setState(1);
+                            slotsobject11.setDescmsg(ddd.getDescmsg());
+
+                            Map map003 = mapper.readValue(ddd.getContent(), Map.class);
+                            map003.put("group_id", groupid);
+                            map003.put("action", "");
+                            map003.put("id", ddd.getDescmsg());
+                            slotsobject11.setContent(mapper.writeValueAsString(map003));
+                            slotsobjectMapper.updateByPrimaryKey(slotsobject11);
+                        }
+                        return;
+                    }
+                }
+            }
+
+            if ("finished".equals(map33.get("state"))){
+                //先检查disable开关
+                Dictionary003Example exampledisable = new Dictionary003Example();
+                Dictionary003Example.Criteria criteriadisable = exampledisable.createCriteria();
+                criteriadisable.andDescmsgEqualTo("迁移开关");
+                List<Dictionary003> listdisable = dictionary003Mapper.selectByExample(exampledisable);
+
+                for (Dictionary003 ddisable : listdisable){
+                    Map mapdisable = mapper.readValue(ddisable.getContent(), Map.class);
+                    log.info("disable为:" + mapdisable.get("disable"));
+                    if ("关".equals(mapdisable.get("disable"))){
+                        return;
+                    }else if ("开".equals(map.get("disable"))){
+                        //查出目标组的groupid和其对应的slot组pid，用于更新slot信息
+                        Dictionary003Example example10 = new Dictionary003Example();
+                        Dictionary003Example.Criteria criteria10 = example10.createCriteria();
+                        criteria10.andContentLike("%" + map33.get("target_id") + "%");
+                        int pid = 0;//服务组表id
+                        String groupid = "";
+                        List<Dictionary003> list1 = dictionary003Mapper.selectByExample(example10);
+                        for (Dictionary003 dd : list1) {
+                            pid = dd.getPid();
+
+                            JSONObject jsonObject = JSONObject.fromObject(dd.getContent());
+                            groupid = jsonObject.getString("servergroupid");
+                        }
+                        log.info("pid = " + pid);
+                        log.info("servergroupid = " + groupid);
+
+                        //迁移完毕，更新为目标组的pid，greoup_id，移除action对象
+                        slotsobjectExample example3 = new slotsobjectExample();
+                        slotsobjectExample.Criteria criteria3 = example3.createCriteria();
+                        criteria3.andContentLike("%index%");
+                        List<slotsobject> list3 = slotsobjectMapper.selectByExample(example3);
+                        for (slotsobject ddd : list3) {
+                            slotsobject slotsobject11 = new slotsobject();
+                            slotsobject11.setId(ddd.getId());
+                            slotsobject11.setPid(pid);
+                            slotsobject11.setLevel(3);
+                            slotsobject11.setState(1);
+                            slotsobject11.setDescmsg(ddd.getDescmsg());
+
+                            Map map003 = mapper.readValue(ddd.getContent(), Map.class);
+                            map003.put("group_id", groupid);
+                            map003.put("action", "");
+                            map003.put("id", ddd.getDescmsg());
+                            slotsobject11.setContent(mapper.writeValueAsString(map003));
+                            slotsobjectMapper.updateByPrimaryKey(slotsobject11);
+                        }
+                        return;
+                    }
+                }
+            }
+
+//            //更新为migrating状态
+//            map.put("index",map33.get("index"));
+//            map.put("target_id",map33.get("target_id"));
+//            map.put("state", "migrating");
+//
+//            map1.put("action", map);
+//
+//            slotsobject.setContent(mapper.writeValueAsString(map1));
+//
+//            slotsobjectExample example1 = new slotsobjectExample();
+//            slotsobjectExample.Criteria criteria1 = example1.createCriteria();
+//            criteria1.andContentLike("%index%");
+//            slotsobjectMapper.updateByExampleSelective(slotsobject, example1);
+//
+//            //更新为finished状态
+//            slotsobject slotsobject1 = new slotsobject();
+//
+//            Map map2 = new HashMap();
+//            Map map3 = mapper.readValue(d.getContent(), Map.class);
+//
+//            //todo
+//            Map map44 = (Map)map1.get("action");
+//
+//            map2.put("index",map1.get("index"));
+//            map2.put("target_id",map33.get("target_id"));
+//            map2.put("state", "finished");
+//
+//            map3.put("action", map2);
+//
+//            slotsobject1.setContent(mapper.writeValueAsString(map3));
+//
+//            slotsobjectExample example2 = new slotsobjectExample();
+//            slotsobjectExample.Criteria criteria2 = example2.createCriteria();
+//            criteria2.andContentLike("%index%");
+//            slotsobjectMapper.updateByExampleSelective(slotsobject1, example2);
+//
+//            //查出目标组的groupid和其对应的slot组pid，用于更新slot信息
+//            Dictionary003Example example10 = new Dictionary003Example();
+//            Dictionary003Example.Criteria criteria10 = example10.createCriteria();
+//            criteria10.andContentLike("%" + map33.get("target_id") + "%");
+//            int pid = 0;//服务组表id
+//            String groupid = "";
+//            List<Dictionary003> list1 = dictionary003Mapper.selectByExample(example10);
+//            for (Dictionary003 dd : list1) {
+//                pid = dd.getPid();
+//
+//                JSONObject jsonObject = JSONObject.fromObject(dd.getContent());
+//                groupid = jsonObject.getString("servergroupid");
+//            }
+//            log.info("pid = " + pid);
+//            log.info("servergroupid = " + groupid);
+//
+//            //迁移完毕，更新为目标组的pid，greoup_id，移除action对象
+//            slotsobjectExample example3 = new slotsobjectExample();
+//            slotsobjectExample.Criteria criteria3 = example3.createCriteria();
+//            criteria3.andContentLike("%index%");
+//            List<slotsobject> list3 = slotsobjectMapper.selectByExample(example3);
+//            for (slotsobject ddd : list3) {
+//                slotsobject slotsobject11 = new slotsobject();
+//                slotsobject11.setId(ddd.getId());
+//                slotsobject11.setPid(pid);
+//                slotsobject11.setLevel(3);
+//                slotsobject11.setState(1);
+//                slotsobject11.setDescmsg(ddd.getDescmsg());
+//
+//                Map map003 = mapper.readValue(ddd.getContent(), Map.class);
+//                map003.put("group_id", groupid);
+//                map003.put("action", "");
+//                map003.put("id", ddd.getDescmsg());
+//                slotsobject11.setContent(mapper.writeValueAsString(map003));
+//                slotsobjectMapper.updateByPrimaryKey(slotsobject11);
+//            }
+        }
         return;
     }
 }
