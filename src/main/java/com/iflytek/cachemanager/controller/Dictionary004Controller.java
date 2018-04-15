@@ -21,7 +21,7 @@ import java.util.*;
 @RestController
 public class Dictionary004Controller {
     @Autowired
-    Dictionary004Mapper dictionary004Mapper;
+    private Dictionary004Mapper dictionary004Mapper;
 
     private ObjectMapper mapper = new ObjectMapper();
 
@@ -131,6 +131,8 @@ public class Dictionary004Controller {
         map.put("tokenmsg", UUID.randomUUID().toString().replaceAll("\\-", ""));
         map.put("jvmpath", "jvm运行环境");
         map.put("javamemory", "java内存");
+        map.put("Numberconnections","并发连接数");
+        map.put("RWoperands","读写操作数");
 
         dictionary004.setContent(mapper.writeValueAsString(map));
         dictionary004Mapper.insertSelective(dictionary004);

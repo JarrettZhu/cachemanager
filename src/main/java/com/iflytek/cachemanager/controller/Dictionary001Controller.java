@@ -2,7 +2,7 @@ package com.iflytek.cachemanager.controller;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.iflytek.cachemanager.entity.*;
+import com.iflytek.cachemanager.entity.Dictionary001;
 import com.iflytek.cachemanager.mapper.Dictionary001Mapper;
 import com.iflytek.cachemanager.result.Result;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,7 +13,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.io.IOException;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 /**

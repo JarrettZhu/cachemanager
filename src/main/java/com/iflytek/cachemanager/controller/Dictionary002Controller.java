@@ -2,10 +2,11 @@ package com.iflytek.cachemanager.controller;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.iflytek.cachemanager.entity.Dictionary002;
-import com.iflytek.cachemanager.entity.Dictionary002Example;
+import com.iflytek.cachemanager.entity.*;
 import com.iflytek.cachemanager.mapper.Dictionary001Mapper;
 import com.iflytek.cachemanager.mapper.Dictionary002Mapper;
+import com.iflytek.cachemanager.mapper.Dictionary003Mapper;
+import com.iflytek.cachemanager.mapper.slotsobjectMapper;
 import com.iflytek.cachemanager.result.Result;
 import lombok.extern.slf4j.Slf4j;
 import net.sf.json.JSONObject;
@@ -14,7 +15,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import sun.rmi.runtime.Log;
 
 import java.io.IOException;
 import java.util.*;
@@ -29,10 +29,16 @@ import java.util.*;
 public class Dictionary002Controller {
 
     @Autowired
+    private Dictionary003Mapper dictionary003Mapper;
+
+    @Autowired
     private Dictionary002Mapper dictionary002Mapper;
 
     @Autowired
     private Dictionary001Mapper dictionary001Mapper;
+
+    @Autowired
+    private slotsobjectMapper slotsobjectMapper;
 
     private ObjectMapper mapper = new ObjectMapper();
 
@@ -53,12 +59,35 @@ public class Dictionary002Controller {
     public Result deleteaservergroup(
             @RequestParam(required = true) String servergroupid
     ) throws IOException {
+        //删除服务组同时删除其下的服务器和slot组，然后把占用的slot释放出来
+        String id = "%" + servergroupid + "%";
         Dictionary002Example example = new Dictionary002Example();
         Dictionary002Example.Criteria criteria = example.createCriteria();
-        String id = "%" + servergroupid + "%";
         criteria.andContentLike(id);
         dictionary002Mapper.deleteByExample(example);
+
+        Dictionary003Example example1 = new Dictionary003Example();
+        Dictionary003Example.Criteria criteria1 = example1.createCriteria();
+        criteria1.andContentLike(id);
+        dictionary003Mapper.deleteByExample(example1);
+
+        slotsobjectExample example3 = new slotsobjectExample();
+        slotsobjectExample.Criteria criteria2 = example3.createCriteria();
+        criteria2.andContentLike(id);
+        List<slotsobject> list = slotsobjectMapper.selectByExample(example3);
+        for (slotsobject d : list) {
+            //pid置为空
+            d.setPid(null);
+            d.setLevel(3);
+
+            Map map = mapper.readValue(d.getContent(), Map.class);
+            map.put("group_id", "");
+            d.setContent(mapper.writeValueAsString(map));
+            slotsobjectMapper.updateByPrimaryKey(d);
+        }
         return Result.newSuccess(null);
+
+
     }
 
     /**
@@ -82,6 +111,7 @@ public class Dictionary002Controller {
         criteria1.andPidEqualTo(20);
         List<Dictionary002> list1 = dictionary002Mapper.selectByExample(example1);
 
+        log.info("服务器组长度为：" + list1.size());
         List sonList = new ArrayList();
         for (Dictionary002 d : list1) {
             Map map = mapper.readValue(d.getContent(), Map.class);
@@ -281,42 +311,180 @@ public class Dictionary002Controller {
             @RequestParam(required = true) String serverport
     ) throws IOException {
 
+        //先查出父节点服务器组的相关信息
         Dictionary002Example example1 = new Dictionary002Example();
         Dictionary002Example.Criteria criteria1 = example1.createCriteria();
-//        String id = "%" + servergroupid + "%";
         criteria1.andContentLike("%" + servergroupid + "%").andLevelEqualTo(2);
         int sgid = 0;//服务组表id
-        String jqname = "";
-        List<Dictionary002> list = dictionary002Mapper.selectByExample(example1);
-        for (Dictionary002 d : list) {
+        String jqname = "";//集群名称
+        List<Dictionary002> list1 = dictionary002Mapper.selectByExample(example1);
+        for (Dictionary002 d : list1) {
             sgid = d.getId();
             JSONObject jsonObject = JSONObject.fromObject(d.getContent());
             jqname = jsonObject.getString("name");
         }
 
-        Dictionary002 dictionary002 = new Dictionary002();
-        log.info("sgid = " + sgid);
-        dictionary002.setPid(sgid);
-        log.info("disgid = " + dictionary002.getPid());
-        dictionary002.setLevel(3);
-        dictionary002.setState(1);
-        dictionary002.setDescmsg("集群-服务器组-服务器");
+        Dictionary002Example example2 = new Dictionary002Example();
+        Dictionary002Example.Criteria criteria2 = example2.createCriteria();
+//        criteria2.andContentLike("%" + "集群-服务器组" + "%").andLevelEqualTo(2);
+        criteria2.andPidEqualTo(20);
+        List<Dictionary002> list2 = dictionary002Mapper.selectByExample(example2);
+        log.info("是否为第一个服务器组，服务器组list长度：" + list2.size());
+        //判断是否为第一个服务器组
+        if (list2.size() == 1) {
+            log.info("是第一个服务器组！！！");
 
-        Map map002 = new HashMap();
-        map002.put("name", jqname);
-        map002.put("servergroupid", servergroupid);
-        map002.put("proxyip", proxyip);
-        map002.put("zkip", zkip);
-        map002.put("serverip", serverip);
-        map002.put("serverport", serverport);
-        map002.put("ismain", "从服务器");
-        map002.put("issync", "不同步");
-        map002.put("jvmpath", "自定");
-        map002.put("javamemory", "自定");
-        dictionary002.setContent(mapper.writeValueAsString(map002));
-        dictionary002Mapper.insertSelective(dictionary002);
+            Dictionary002Example exampleserver = new Dictionary002Example();
+            Dictionary002Example.Criteria criteriaserver = exampleserver.createCriteria();
+//            criteriaserver.andDescmsgEqualTo("%" + "集群-服务器组-服务器" + "%").andLevelEqualTo(3);
+//            criteriaserver.andPidEqualTo(20);
+              criteriaserver.andLevelEqualTo(3);
 
+            List<Dictionary002> listserver = dictionary002Mapper.selectByExample(exampleserver);
+            log.info("是否为第一个服务器，服务器list长度：" + listserver.size());
+            //判断是否为第一个服务器
+            if (listserver.size() == 0){
+                log.info("是第一个服务器！！！");
+                //添加服务器
+                Dictionary002 dictionary002 = new Dictionary002();
+                dictionary002.setPid(sgid);//服务器pid等于父节点服务器组id
+                dictionary002.setLevel(3);
+                dictionary002.setState(1);
+                dictionary002.setDescmsg("集群-服务器组-服务器");
+
+                Map map002 = new HashMap();
+                map002.put("name", jqname);
+                map002.put("servergroupid", servergroupid);
+                map002.put("proxyip", proxyip);
+                map002.put("zkip", zkip);
+                map002.put("serverstatus", "运行正常");
+                map002.put("serverip", serverip);
+                map002.put("serverport", serverport);
+                map002.put("ismain", "从服务器");
+                map002.put("issync", "不同步");
+                map002.put("jvmpath", "Jvm环境（自定）");
+                map002.put("javamemory", "Java内存（自定）");
+                dictionary002.setContent(mapper.writeValueAsString(map002));
+                dictionary002Mapper.insertSelective(dictionary002);
+
+                //添加服务器的同时添加slots组
+                Dictionary003 dictionary003 = new Dictionary003();
+                dictionary003.setPid(sgid);
+                dictionary003.setLevel(2);
+                dictionary003.setState(1);
+                dictionary003.setDescmsg("集群-服务器组-Slot组");
+
+                Map map003 = new HashMap();
+                map003.put("name", jqname);
+                map003.put("servergroupid", servergroupid);
+                map003.put("zkip", zkip);
+                map003.put("serverip", serverip);
+                map003.put("serverport", serverport);
+                map003.put("slotgroupid", "Slot分组ID（自定）");
+                dictionary003.setContent(mapper.writeValueAsString(map003));
+                dictionary003Mapper.insertSelective(dictionary003);
+
+                //分配slot
+//                slotsobjectExample example = new slotsobjectExample();
+//                List<slotsobject> list = slotsobjectMapper.selectByExample(example);
+//                for (slotsobject d2 : list) {
+//                    d2.setPid(sgid);
+//
+//                    Map map = mapper.readValue(d2.getContent(), Map.class);
+//                    map.put("group_id", servergroupid);
+//                    d2.setContent(mapper.writeValueAsString(map));
+//                    slotsobjectMapper.updateByPrimaryKey(d2);
+//                    log.info("分配slot给组" + servergroupid + "成功");
+//                }
+                return Result.newSuccess(null);
+            }
+        }
+
+        //若不是第一个服务器组
+        Dictionary002 dictionary002new = new Dictionary002();
+        dictionary002new.setPid(sgid);//服务器pid等于父节点服务器组id
+        dictionary002new.setLevel(3);
+        dictionary002new.setState(1);
+        dictionary002new.setDescmsg("集群-服务器组-服务器");
+
+        Map map002new = new HashMap();
+        map002new.put("name", jqname);
+        map002new.put("servergroupid", servergroupid);
+        map002new.put("proxyip", proxyip);
+        map002new.put("zkip", zkip);
+        map002new.put("serverstatus", "运行正常");
+        map002new.put("serverip", serverip);
+        map002new.put("serverport", serverport);
+        map002new.put("ismain", "从服务器");
+        map002new.put("issync", "不同步");
+        map002new.put("jvmpath", "Jvm环境（自定）");
+        map002new.put("javamemory", "Java内存（自定）");
+        dictionary002new.setContent(mapper.writeValueAsString(map002new));
+        dictionary002Mapper.insertSelective(dictionary002new);
+
+
+        Dictionary003Example exampleslot = new Dictionary003Example();
+        Dictionary003Example.Criteria criteriaserver = exampleslot.createCriteria();
+//            criteriaserver.andDescmsgEqualTo("%" + "集群-服务器组-服务器" + "%").andLevelEqualTo(3);
+//            criteriaserver.andPidEqualTo(20);
+        criteriaserver.andLevelEqualTo(2);
+
+        Map map = new HashMap();
+        int i = 0;
+        boolean ret;
+        List<Dictionary003> listslot = dictionary003Mapper.selectByExample(exampleslot);
+        log.info("是否为该服务器组的第一个slot组");
+        for (Dictionary003 b : listslot) {
+            map.put("pid"+i, b.getPid());
+            i++;
+        }
+        ret = map.containsValue(sgid);
+        log.info("sgid = "+sgid);
+        log.info("i = "+i);
+        log.info(ret?"true":"false");
+        if (!ret){
+            //添加服务器的同时添加slots组
+            Dictionary003 dictionary003 = new Dictionary003();
+            dictionary003.setPid(sgid);
+            dictionary003.setLevel(2);
+            dictionary003.setState(1);
+            dictionary003.setDescmsg("集群-服务器组-Slot组");
+
+            Map map003 = new HashMap();
+            map003.put("name", jqname);
+            map003.put("servergroupid", servergroupid);
+            map003.put("zkip", zkip);
+            map003.put("serverip", serverip);
+            map003.put("serverport", serverport);
+            map003.put("slotgroupid", "Slot分组ID（自定）");
+            dictionary003.setContent(mapper.writeValueAsString(map003));
+            dictionary003Mapper.insertSelective(dictionary003);
+        }
         return Result.newSuccess(null);
+    }
 
+
+
+    /**
+     * @Description:16 查询服务器组的主服务器
+     */
+    @RequestMapping(value = "querymainserver", method = RequestMethod.POST)
+    public Result enterserveraddress(
+            @RequestParam(required = true)String servergroupid
+    ) throws IOException {
+        Dictionary002Example example = new Dictionary002Example();
+        Dictionary002Example.Criteria criteria = example.createCriteria();
+        criteria.andContentLike("%" + servergroupid + "%").andContentLike("%主服务器%");
+
+        Map map1 = new HashMap();
+        List<Dictionary002> list = dictionary002Mapper.selectByExample(example);
+        for (Dictionary002 d :list){
+            Map map = mapper.readValue(d.getContent(),Map.class);
+
+            map1.put("MainServerIp", map.get("serverip"));
+            map1.put("MainServerPort", map.get("serverport"));
+        }
+
+        return Result.newSuccess(map1);
     }
 }

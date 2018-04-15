@@ -99,6 +99,7 @@
         <table tableName="dictionary004" domainObjectName="Dictionary004"></table>
         <table tableName="dictionary005" domainObjectName="Dictionary005"></table>
         <table tableName="dictionary006" domainObjectName="Dictionary006"></table>
+        <table tableName="slotsobject" domainObjectName="slotsobject"></table>
 
     </context>
 
