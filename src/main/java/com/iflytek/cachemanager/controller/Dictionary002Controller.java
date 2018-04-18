@@ -324,6 +324,21 @@ public class Dictionary002Controller {
             jqname = jsonObject.getString("name");
         }
 
+        String jvmpath = "JVM version is 25.92-b14";
+        StringBuffer stringBuffer = new StringBuffer();
+        stringBuffer.append("MinHeapFreeRatio=0;");
+        stringBuffer.append("MaxHeapFreeRatio= 100;");
+        stringBuffer.append("MaxHeapSize= 734003200 (700.0MB);");
+        stringBuffer.append("NewSize= 44040192 (42.0MB);");
+        stringBuffer.append("MaxNewSize= 244318208 (233.0MB);");
+        stringBuffer.append("OldSize= 88080384 (84.0MB);");
+        stringBuffer.append("NewRatio= 2;");
+        stringBuffer.append("SurvivorRatio= 8;");
+        stringBuffer.append("MetaspaceSize= 21807104 (20.796875MB);");
+        stringBuffer.append("CompressedClassSpaceSize= 1073741824 (1024.0MB);");
+        stringBuffer.append("MaxMetaspaceSize= 17592186044415 MB;");
+        stringBuffer.append("G1HeapRegionSize= 0 (0.0MB);");
+
         Dictionary002Example example2 = new Dictionary002Example();
         Dictionary002Example.Criteria criteria2 = example2.createCriteria();
 //        criteria2.andContentLike("%" + "集群-服务器组" + "%").andLevelEqualTo(2);
@@ -362,8 +377,8 @@ public class Dictionary002Controller {
                 map002.put("serverport", serverport);
                 map002.put("ismain", "从服务器");
                 map002.put("issync", "不同步");
-                map002.put("jvmpath", "Jvm环境（自定）");
-                map002.put("javamemory", "Java内存（自定）");
+                map002.put("jvmpath", jvmpath);
+                map002.put("javamemory", stringBuffer);
                 dictionary002.setContent(mapper.writeValueAsString(map002));
                 dictionary002Mapper.insertSelective(dictionary002);
 
@@ -380,7 +395,7 @@ public class Dictionary002Controller {
                 map003.put("zkip", zkip);
                 map003.put("serverip", serverip);
                 map003.put("serverport", serverport);
-                map003.put("slotgroupid", "Slot分组ID（自定）");
+                map003.put("slotgroupid", "Slotgroup");
                 dictionary003.setContent(mapper.writeValueAsString(map003));
                 dictionary003Mapper.insertSelective(dictionary003);
 
@@ -417,8 +432,8 @@ public class Dictionary002Controller {
         map002new.put("serverport", serverport);
         map002new.put("ismain", "从服务器");
         map002new.put("issync", "不同步");
-        map002new.put("jvmpath", "Jvm环境（自定）");
-        map002new.put("javamemory", "Java内存（自定）");
+        map002new.put("jvmpath", jvmpath);
+        map002new.put("javamemory", stringBuffer);
         dictionary002new.setContent(mapper.writeValueAsString(map002new));
         dictionary002Mapper.insertSelective(dictionary002new);
 

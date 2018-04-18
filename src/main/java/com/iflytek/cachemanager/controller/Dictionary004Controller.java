@@ -118,6 +118,21 @@ public class Dictionary004Controller {
         dictionary004.setState(1);
         dictionary004.setDescmsg("集群-代理服务器");
 
+        String jvmpath = "JVM version is 25.92-b14";
+        StringBuffer stringBuffer = new StringBuffer();
+        stringBuffer.append("MinHeapFreeRatio=0;");
+        stringBuffer.append("MaxHeapFreeRatio= 100;");
+        stringBuffer.append("MaxHeapSize= 734003200 (700.0MB);");
+        stringBuffer.append("NewSize= 44040192 (42.0MB);");
+        stringBuffer.append("MaxNewSize= 244318208 (233.0MB);");
+        stringBuffer.append("OldSize= 88080384 (84.0MB);");
+        stringBuffer.append("NewRatio= 2;");
+        stringBuffer.append("SurvivorRatio= 8;");
+        stringBuffer.append("MetaspaceSize= 21807104 (20.796875MB);");
+        stringBuffer.append("CompressedClassSpaceSize= 1073741824 (1024.0MB);");
+        stringBuffer.append("MaxMetaspaceSize= 17592186044415 MB;");
+        stringBuffer.append("G1HeapRegionSize= 0 (0.0MB);");
+        int randomconnect = (int) Math.random()*9000+1000;
         int random = 0;
         for(int j = 0; j< 100; j++){
             random = (int)((Math.random()*9+1)*100000);
@@ -129,10 +144,10 @@ public class Dictionary004Controller {
         map.put("adminip", adminip);
         map.put("proxyid", random);
         map.put("tokenmsg", UUID.randomUUID().toString().replaceAll("\\-", ""));
-        map.put("jvmpath", "jvm运行环境");
-        map.put("javamemory", "java内存");
-        map.put("Numberconnections","并发连接数");
-        map.put("RWoperands","读写操作数");
+        map.put("jvmpath", jvmpath);
+        map.put("javamemory", stringBuffer);
+        map.put("Numberconnections",randomconnect);
+        map.put("RWoperands",randomconnect + "/s");
 
         dictionary004.setContent(mapper.writeValueAsString(map));
         dictionary004Mapper.insertSelective(dictionary004);
